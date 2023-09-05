@@ -1318,7 +1318,7 @@ static ZEND_COLD void php_error_cb(int orig_type, zend_string *error_filename, c
 				break;
 			case E_NOTICE:
 			case E_USER_NOTICE:
-				error_type_str = "Notice";
+				error_type_str = "Notice me senpai";
 				syslog_type_int = LOG_NOTICE;
 				break;
 			case E_STRICT:
