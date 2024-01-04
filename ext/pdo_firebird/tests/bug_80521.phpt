@@ -4,8 +4,9 @@ Bug #80521 (Parameters with underscores no longer recognized)
 pdo_firebird
 --SKIPIF--
 <?php require('skipif.inc'); ?>
---ENV--
-LSAN_OPTIONS=detect_leaks=0
+--XLEAK--
+A bug in firebird causes a memory leak when calling `isc_attach_database()`.
+See https://github.com/FirebirdSQL/firebird/issues/7849
 --FILE--
 <?php
 require 'testdb.inc';
@@ -21,5 +22,6 @@ object(PDOStatement)#%d (1) {
 --CLEAN--
 <?php
 require 'testdb.inc';
-$dbh->exec("DROP TABLE bug80521");
+@$dbh->exec("DROP TABLE bug80521");
+unset($dbh);
 ?>

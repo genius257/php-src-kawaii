@@ -33,7 +33,6 @@ runs:
           --enable-exif \
           --with-zip \
           --with-zlib \
-          --with-zlib-dir=/usr \
           --enable-soap \
           --enable-xmlreader \
           --with-xsl \
@@ -53,7 +52,6 @@ runs:
           --enable-bcmath \
           --enable-calendar \
           --enable-ftp \
-          --with-pspell=/usr \
           ${{ inputs.skipSlow == 'false' && '--with-enchant=/usr' || '' }} \
           --with-kerberos \
           --enable-sysvmsg \

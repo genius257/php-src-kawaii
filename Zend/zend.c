@@ -230,7 +230,12 @@ static ZEND_INI_MH(OnUpdateReservedStackSize) /* {{{ */
 static ZEND_INI_MH(OnUpdateFiberStackSize) /* {{{ */
 {
 	if (new_value) {
-		EG(fiber_stack_size) = zend_ini_parse_uquantity_warn(new_value, entry->name);
+		zend_long tmp = zend_ini_parse_quantity_warn(new_value, entry->name);
+		if (tmp < 0) {
+			zend_error(E_WARNING, "fiber.stack_size must be a positive number");
+			return FAILURE;
+		}
+		EG(fiber_stack_size) = tmp;
 	} else {
 		EG(fiber_stack_size) = ZEND_FIBER_DEFAULT_C_STACK_SIZE;
 	}
@@ -1725,7 +1730,7 @@ ZEND_API ZEND_COLD void zend_throw_error(zend_class_entry *exception_ce, const c
 	if (EG(current_execute_data) && !CG(in_compilation)) {
 		zend_throw_exception(exception_ce, message, 0);
 	} else {
-		zend_error(E_ERROR, "%s", message);
+		zend_error_noreturn(E_ERROR, "%s", message);
 	}
 
 	efree(message);

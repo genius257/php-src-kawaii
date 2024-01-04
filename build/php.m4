@@ -124,7 +124,7 @@ AC_DEFUN([PHP_CANONICAL_HOST_TARGET],[
     host_alias=$host
   fi
   if test -z "$host_alias"; then
-    AC_MSG_ERROR([host_alias is not set!])
+    AC_MSG_ERROR([host_alias is not set! Make sure to run config.guess])
   fi
 ])
 
@@ -1070,28 +1070,6 @@ AC_DEFUN([PHP_CHECK_SIZEOF], [
 ])
 
 dnl
-dnl PHP_CHECK_IN_ADDR_T
-dnl
-AC_DEFUN([PHP_CHECK_IN_ADDR_T], [
-dnl AIX keeps in_addr_t in /usr/include/netinet/in.h
-AC_MSG_CHECKING([for in_addr_t])
-AC_CACHE_VAL(ac_cv_type_in_addr_t,
-[AC_EGREP_CPP(dnl
-changequote(<<,>>)dnl
-<<in_addr_t[^a-zA-Z_0-9]>>dnl
-changequote([,]), [#include <sys/types.h>
-#include <stdlib.h>
-#include <stddef.h>
-#ifdef HAVE_NETINET_IN_H
-#include <netinet/in.h>
-#endif], ac_cv_type_in_addr_t=yes, ac_cv_type_in_addr_t=no)])dnl
-AC_MSG_RESULT([$ac_cv_type_in_addr_t])
-if test $ac_cv_type_in_addr_t = no; then
-  AC_DEFINE(in_addr_t, u_int, [ ])
-fi
-])
-
-dnl
 dnl PHP_TIME_R_TYPE
 dnl
 dnl Check type of reentrant time-related functions. Type can be: irix, hpux or
@@ -1431,18 +1409,14 @@ AC_DEFUN([PHP_FOPENCOOKIE], [
   AC_CHECK_FUNC(fopencookie, [have_glibc_fopencookie=yes])
 
   if test "$have_glibc_fopencookie" = "yes"; then
-dnl This comes in two flavors: newer glibcs (since 2.1.2?) have a type called
-dnl cookie_io_functions_t.
+dnl glibcs (since 2.1.2?) have a type called cookie_io_functions_t.
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
 #define _GNU_SOURCE
 #include <stdio.h>
 ]], [[cookie_io_functions_t cookie;]])],[have_cookie_io_functions_t=yes],[])
 
     if test "$have_cookie_io_functions_t" = "yes"; then
-      cookie_io_functions_t=cookie_io_functions_t
-      have_fopen_cookie=yes
-
-dnl Even newer glibcs have a different seeker definition.
+dnl Newer glibcs have a different seeker definition.
 AC_RUN_IFELSE([AC_LANG_SOURCE([[
 #define _GNU_SOURCE
 #include <stdio.h>
@@ -1488,22 +1462,8 @@ int main(void) {
   esac
 ])
 
-    else
-
-dnl Older glibc versions (up to 2.1.2?) call it _IO_cookie_io_functions_t.
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
-#define _GNU_SOURCE
-#include <stdio.h>
-]], [[_IO_cookie_io_functions_t cookie;]])], [have_IO_cookie_io_functions_t=yes], [])
-      if test "$have_cookie_io_functions_t" = "yes" ; then
-        cookie_io_functions_t=_IO_cookie_io_functions_t
-        have_fopen_cookie=yes
-      fi
-    fi
-
-    if test "$have_fopen_cookie" = "yes" ; then
       AC_DEFINE(HAVE_FOPENCOOKIE, 1, [ ])
-      AC_DEFINE_UNQUOTED(COOKIE_IO_FUNCTIONS_T, $cookie_io_functions_t, [ ])
+
       if test "$cookie_io_functions_use_off64_t" = "yes" ; then
         AC_DEFINE(COOKIE_SEEKER_USES_OFF64_T, 1, [ ])
       fi
@@ -2437,7 +2397,6 @@ dnl
 dnl PHP_CHECK_STDINT_TYPES
 dnl
 AC_DEFUN([PHP_CHECK_STDINT_TYPES], [
-  AC_CHECK_SIZEOF([short])
   AC_CHECK_SIZEOF([int])
   AC_CHECK_SIZEOF([long])
   AC_CHECK_SIZEOF([long long])
@@ -2462,6 +2421,25 @@ AC_DEFUN([PHP_CHECK_BUILTIN_EXPECT], [
   ])
 
   AC_DEFINE_UNQUOTED([PHP_HAVE_BUILTIN_EXPECT], [$have_builtin_expect], [Whether the compiler supports __builtin_expect])
+])
+
+dnl
+dnl PHP_CHECK_BUILTIN_UNREACHABLE
+dnl
+AC_DEFUN([PHP_CHECK_BUILTIN_UNREACHABLE], [
+  AC_MSG_CHECKING([for __builtin_unreachable])
+
+  AC_LINK_IFELSE([AC_LANG_PROGRAM([], [[
+    __builtin_unreachable();
+  ]])], [
+    have_builtin_unreachable=1
+    AC_MSG_RESULT([yes])
+  ], [
+    have_builtin_unreachable=0
+    AC_MSG_RESULT([no])
+  ])
+
+  AC_DEFINE_UNQUOTED([PHP_HAVE_BUILTIN_UNREACHABLE], [$have_builtin_unreachable], [Whether the compiler supports __builtin_unreachable])
 ])
 
 dnl
@@ -2713,7 +2691,7 @@ AC_DEFUN([PHP_CHECK_BUILTIN_CPU_INIT], [
   AC_MSG_CHECKING([for __builtin_cpu_init])
 
   AC_LINK_IFELSE([AC_LANG_PROGRAM([], [[
-    return __builtin_cpu_init()? 1 : 0;
+    __builtin_cpu_init();
   ]])], [
     have_builtin_cpu_init=1
     AC_MSG_RESULT([yes])

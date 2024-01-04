@@ -21,7 +21,7 @@
 #ifndef ZEND_AST_H
 #define ZEND_AST_H
 
-#include "zend.h"
+#include "zend_types.h"
 
 #ifndef ZEND_AST_SPEC
 # define ZEND_AST_SPEC 1
@@ -191,7 +191,7 @@ typedef struct _zend_ast_list {
 	zend_ast_attr attr;
 	uint32_t lineno;
 	uint32_t children;
-	zend_ast *child[1];
+	zend_ast *child[1] ZEND_ELEMENT_COUNT(children);
 } zend_ast_list;
 
 /* Lineno is stored in val.u2.lineno */

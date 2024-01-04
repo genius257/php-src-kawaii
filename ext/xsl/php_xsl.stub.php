@@ -71,26 +71,30 @@ const LIBEXSLT_DOTTED_VERSION = UNKNOWN;
 
 class XSLTProcessor
 {
+    public bool $doXInclude = false;
+
+    public bool $cloneDocument = false;
+
     /**
-     * @param DOMDocument|SimpleXMLElement $stylesheet
+     * @param DOM\Document|SimpleXMLElement $stylesheet
      * @tentative-return-type
      */
     public function importStylesheet(object $stylesheet): bool {}
 
     /**
-     * @param DOMDocument|SimpleXMLElement $document
+     * @param DOM\Document|SimpleXMLElement $document
      * @tentative-return-type
      */
-    public function transformToDoc(object $document, ?string $returnClass = null): DOMDocument|false {}
+    public function transformToDoc(object $document, ?string $returnClass = null): object|false {}
 
     /**
-     * @param DOMDocument|SimpleXMLElement $document
+     * @param DOM\Document|SimpleXMLElement $document
      * @tentative-return-type
      */
     public function transformToUri(object $document, string $uri): int {}
 
     /**
-     * @param DOMDocument|SimpleXMLElement $document
+     * @param DOM\Document|SimpleXMLElement $document
      * @tentative-return-type
      */
     public function transformToXml(object $document): string|null|false {}

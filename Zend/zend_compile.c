@@ -103,7 +103,7 @@ static void zend_compile_assign(znode *result, zend_ast *ast);
 zend_never_inline static void zend_stack_limit_error(void)
 {
 	zend_error_noreturn(E_COMPILE_ERROR,
-		"Maximum call stack size of %zu bytes reached during compilation. Try splitting expression",
+		"Maximum call stack size of %zu bytes (zend.max_allowed_stack_size - zend.reserved_stack_size) reached during compilation. Try splitting expression",
 		(size_t) ((uintptr_t) EG(stack_base) - (uintptr_t) EG(stack_limit)));
 }
 
@@ -869,7 +869,7 @@ uint32_t zend_modifier_token_to_flag(zend_modifier_target target, uint32_t token
 	} else if (target == ZEND_MODIFIER_TARGET_CONSTANT) {
 		member = "class constant";
 	} else if (target == ZEND_MODIFIER_TARGET_CPP) {
-		member = "promoted property";
+		member = "parameter";
 	} else {
 		ZEND_UNREACHABLE();
 	}
@@ -2929,7 +2929,11 @@ static zend_op *zend_compile_simple_var(znode *result, zend_ast *ast, uint32_t t
 
 static void zend_separate_if_call_and_write(znode *node, zend_ast *ast, uint32_t type) /* {{{ */
 {
-	if (type != BP_VAR_R && type != BP_VAR_IS && zend_is_call(ast)) {
+	if (type != BP_VAR_R
+	 && type != BP_VAR_IS
+	 /* Whether a FUNC_ARG is R may only be determined at runtime. */
+	 && type != BP_VAR_FUNC_ARG
+	 && zend_is_call(ast)) {
 		if (node->op_type == IS_VAR) {
 			zend_op *opline = zend_emit_op(NULL, ZEND_SEPARATE, node, NULL);
 			opline->result_type = IS_VAR;
@@ -6556,7 +6560,7 @@ static void zend_is_type_list_redundant_by_single_type(zend_type_list *type_list
 	}
 }
 
-static zend_type zend_compile_typename(zend_ast *ast, bool force_allow_null);
+static zend_type zend_compile_typename(zend_ast *ast);
 
 static zend_type zend_compile_typename_ex(
 		zend_ast *ast, bool force_allow_null, bool *forced_allow_null) /* {{{ */
@@ -6597,7 +6601,7 @@ static zend_type zend_compile_typename_ex(
 				/* Mark type as list type */
 				ZEND_TYPE_SET_LIST(type, type_list);
 
-				single_type = zend_compile_typename(type_ast, false);
+				single_type = zend_compile_typename(type_ast);
 				ZEND_ASSERT(ZEND_TYPE_IS_INTERSECTION(single_type));
 
 				type_list->types[type_list->num_types++] = single_type;
@@ -6784,10 +6788,10 @@ static zend_type zend_compile_typename_ex(
 }
 /* }}} */
 
-static zend_type zend_compile_typename(zend_ast *ast, bool force_allow_null)
+static zend_type zend_compile_typename(zend_ast *ast)
 {
 	bool forced_allow_null;
-	return zend_compile_typename_ex(ast, force_allow_null, &forced_allow_null);
+	return zend_compile_typename_ex(ast, false, &forced_allow_null);
 }
 
 /* May convert value from int to float. */
@@ -6933,8 +6937,7 @@ static void zend_compile_params(zend_ast *ast, zend_ast *return_type_ast, uint32
 		arg_infos = safe_emalloc(sizeof(zend_arg_info), list->children + 1, 0);
 		arg_infos->name = NULL;
 		if (return_type_ast) {
-			arg_infos->type = zend_compile_typename(
-				return_type_ast, /* force_allow_null */ 0);
+			arg_infos->type = zend_compile_typename(return_type_ast);
 			ZEND_TYPE_FULL_MASK(arg_infos->type) |= _ZEND_ARG_INFO_FLAGS(
 				(op_array->fn_flags & ZEND_ACC_RETURN_REFERENCE) != 0, /* is_variadic */ 0, /* is_tentative */ 0);
 		} else {
@@ -7137,7 +7140,7 @@ static void zend_compile_params(zend_ast *ast, zend_ast *return_type_ast, uint32
 			/* Recompile the type, as it has different memory management requirements. */
 			zend_type type = ZEND_TYPE_INIT_NONE(0);
 			if (type_ast) {
-				type = zend_compile_typename(type_ast, /* force_allow_null */ 0);
+				type = zend_compile_typename(type_ast);
 			}
 
 			/* Don't give the property an explicit default value. For typed properties this means
@@ -7711,7 +7714,7 @@ static void zend_compile_prop_decl(zend_ast *ast, zend_ast *type_ast, uint32_t f
 		zend_type type = ZEND_TYPE_INIT_NONE(0);
 
 		if (type_ast) {
-			type = zend_compile_typename(type_ast, /* force_allow_null */ 0);
+			type = zend_compile_typename(type_ast);
 
 			if (ZEND_TYPE_FULL_MASK(type) & (MAY_BE_VOID|MAY_BE_NEVER|MAY_BE_CALLABLE)) {
 				zend_string *str = zend_type_to_string(type);
@@ -7826,7 +7829,7 @@ static void zend_compile_class_const_decl(zend_ast *ast, uint32_t flags, zend_as
 		zend_type type = ZEND_TYPE_INIT_NONE(0);
 
 		if (type_ast) {
-			type = zend_compile_typename(type_ast, /* force_allow_null */ 0);
+			type = zend_compile_typename(type_ast);
 
 			uint32_t type_mask = ZEND_TYPE_PURE_MASK(type);
 
@@ -8019,7 +8022,7 @@ static zend_string *zend_generate_anon_class_name(zend_ast_decl *decl)
 static void zend_compile_enum_backing_type(zend_class_entry *ce, zend_ast *enum_backing_type_ast)
 {
 	ZEND_ASSERT(ce->ce_flags & ZEND_ACC_ENUM);
-	zend_type type = zend_compile_typename(enum_backing_type_ast, 0);
+	zend_type type = zend_compile_typename(enum_backing_type_ast);
 	uint32_t type_mask = ZEND_TYPE_PURE_MASK(type);
 	if (ZEND_TYPE_IS_COMPLEX(type) || (type_mask != MAY_BE_LONG && type_mask != MAY_BE_STRING)) {
 		zend_string *type_string = zend_type_to_string(type);
@@ -10612,7 +10615,8 @@ static zend_op *zend_compile_var_inner(znode *result, zend_ast *ast, uint32_t ty
 			case ZEND_AST_NULLSAFE_METHOD_CALL:
 			case ZEND_AST_STATIC_CALL:
 				zend_compile_memoized_expr(result, ast);
-				return &CG(active_op_array)->opcodes[CG(active_op_array)->last - 1];
+				/* This might not actually produce an opcode, e.g. for expressions evaluated at comptime. */
+				return NULL;
 		}
 	}
 

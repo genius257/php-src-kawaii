@@ -139,7 +139,7 @@ typedef struct {
 
 typedef struct {
 	uint32_t num_types;
-	zend_type types[1];
+	zend_type types[1] ZEND_ELEMENT_COUNT(num_types);
 } zend_type_list;
 
 #define _ZEND_TYPE_EXTRA_FLAGS_SHIFT 25
@@ -269,7 +269,7 @@ typedef struct {
 #define ZEND_TYPE_ALLOW_NULL(t) \
 	(((t).type_mask & _ZEND_TYPE_NULLABLE_BIT) != 0)
 
-#ifdef __cplusplus
+#if defined(__cplusplus) && defined(_MSC_VER)
 # define _ZEND_TYPE_PREFIX zend_type
 #else
 /* FIXME: We could add (zend_type) here at some point but this breaks in MSVC because
@@ -374,7 +374,7 @@ struct _zend_string {
 	zend_refcounted_h gc;
 	zend_ulong        h;                /* hash value */
 	size_t            len;
-	char              val[1];
+	char              val[1] ZEND_ELEMENT_COUNT(len);
 };
 
 typedef struct _Bucket {
@@ -572,7 +572,7 @@ struct _zend_resource {
 typedef struct {
 	size_t num;
 	size_t num_allocated;
-	struct _zend_property_info *ptr[1];
+	struct _zend_property_info *ptr[1] ZEND_ELEMENT_COUNT(num);
 } zend_property_info_list;
 
 typedef union {
